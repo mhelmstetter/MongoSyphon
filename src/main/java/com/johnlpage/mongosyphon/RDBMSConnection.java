@@ -96,7 +96,7 @@ public class RDBMSConnection implements IDataSource {
 			              java.sql.ResultSet.CONCUR_READ_ONLY); // Only create a
 															// prepared
 															// statement once
-				stmt.setFetchSize(Integer.MIN_VALUE);
+				//stmt.setFetchSize(Integer.MIN_VALUE);
 
 			}
 			// Parameterise every time as we are calling with different values
