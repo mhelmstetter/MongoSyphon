@@ -144,4 +144,8 @@ public class MongoBulkWriter {
 			ops.clear();
 		}
 	}
+	
+	public void dropDatabase() {
+	    db.drop();
+	}
 }

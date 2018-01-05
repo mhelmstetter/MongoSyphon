@@ -11,7 +11,7 @@ import org.json.XML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.BufferedOutputStream;
-
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 
 import java.io.IOException;
@@ -65,6 +65,13 @@ public class DocumentGenerator {
 		}
 		connectToSource(this.section.get("source", Document.class));
 		connectToTarget(this.section.get("target", Document.class));
+	}
+	
+	DocumentGenerator(CommandLineOptions options, JobDescription jobdesc) {
+	    this(jobdesc, null, null,null);
+	    if (mongoTarget != null && options.isDropDatabase()) {
+	        mongoTarget.dropDatabase();
+	    }
 	}
 
 	// It's fine to not have a target, most sections won't have one

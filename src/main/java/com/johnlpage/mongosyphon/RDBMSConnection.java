@@ -122,6 +122,7 @@ public class RDBMSConnection implements IDataSource {
 				}
 			}
 		} catch (SQLException e) {
+		    e.printStackTrace();
 			logger.error(e.getMessage());
 			System.exit(1);
 		}

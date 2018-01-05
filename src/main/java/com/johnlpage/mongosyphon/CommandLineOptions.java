@@ -17,6 +17,7 @@ public class CommandLineOptions {
 	private boolean helpOnly = false;
 	private String configFile = null;
 	private String newConfigFile = null;
+	private boolean dropDatabase = false;
 
 	public CommandLineOptions(String[] args) throws ParseException {
 		Logger logger = LoggerFactory.getLogger(CommandLineOptions.class);
@@ -30,6 +31,7 @@ public class CommandLineOptions {
 		cliopt.addOption("h", "help", false, "Show Help");
 		cliopt.addOption("c", "config", true, "Configuration File");
 		cliopt.addOption("n", "newconfig", true, "Generate new Configuration File");
+		cliopt.addOption("d", "drop", false, "Drop target database");
 	
 		CommandLine cmd = parser.parse(cliopt, args);
 		
@@ -40,6 +42,10 @@ public class CommandLineOptions {
 		if (cmd.hasOption("n")) {
 			newConfigFile = cmd.getOptionValue("n");
 		}
+		
+		if (cmd.hasOption("drop")) {
+            dropDatabase = true;
+        }
 		
 		if (cmd.hasOption("help")) {
 			HelpFormatter formatter = new HelpFormatter();
@@ -60,5 +66,10 @@ public class CommandLineOptions {
 	
 	public String getConfigFile() {
 		return configFile;
-	}	
+	}
+
+
+    public boolean isDropDatabase() {
+        return dropDatabase;
+    }	
 }

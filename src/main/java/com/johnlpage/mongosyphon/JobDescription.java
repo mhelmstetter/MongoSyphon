@@ -29,7 +29,7 @@ public class JobDescription {
 		}
 		
 		// Handle \ followed by newline as line continuation
-		config = config.replaceAll("\\\\\n", "");
+		config = config.replaceAll("\\\\\r?\n", "");
 		
 		// Better errors from this parser
 		try {

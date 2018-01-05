@@ -49,11 +49,8 @@ public class MongoSyphon {
 			System.exit(1);
 		}
 
-
-
 		
-		DocumentGenerator generator = new DocumentGenerator(jobdesc, null,
-				null,null);
+		DocumentGenerator generator = new DocumentGenerator(options, jobdesc);
 		//Top level generator we just tell to get on with it
 		generator.runConversion();
 
