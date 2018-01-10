@@ -45,7 +45,6 @@ public class RDBMSConnection implements IDataSource {
 			results = null;
 
 		} catch (SQLException e) {
-		    e.printStackTrace();
 			logger.error(e.getMessage());
 			System.exit(1);
 		}
@@ -79,7 +78,6 @@ public class RDBMSConnection implements IDataSource {
 		} catch (SQLException e) {
 			logger.error("Unable to connect to RDBMS");
 			logger.error(e.getMessage());
-			e.printStackTrace();
 			System.exit(1);
 		}
 		this.user = user;
@@ -123,7 +121,6 @@ public class RDBMSConnection implements IDataSource {
 				}
 			}
 		} catch (SQLException e) {
-		    e.printStackTrace();
 			logger.error(e.getMessage());
 			System.exit(1);
 		}
@@ -150,7 +147,6 @@ public class RDBMSConnection implements IDataSource {
 			metaData = results.getMetaData();
 			columnCount = metaData.getColumnCount();
 		} catch (SQLException e) {
-		    e.printStackTrace();
 			logger.error(e.getMessage());
 			System.exit(1);
 		}
