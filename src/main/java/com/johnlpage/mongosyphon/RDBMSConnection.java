@@ -45,6 +45,7 @@ public class RDBMSConnection implements IDataSource {
 			results = null;
 
 		} catch (SQLException e) {
+		    e.printStackTrace();
 			logger.error(e.getMessage());
 			System.exit(1);
 		}
@@ -149,6 +150,7 @@ public class RDBMSConnection implements IDataSource {
 			metaData = results.getMetaData();
 			columnCount = metaData.getColumnCount();
 		} catch (SQLException e) {
+		    e.printStackTrace();
 			logger.error(e.getMessage());
 			System.exit(1);
 		}

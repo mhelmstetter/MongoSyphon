@@ -310,7 +310,7 @@ public class DocumentGenerator {
 			String bits[] = mergeFields.split("\\=");
 			String mergeFrom ;
 			String mergeTo = bits[0];
-			if(bits.length > 0) {
+			if(bits.length > 1) {
 				 mergeFrom = bits[1];
 			} else {
 				 mergeFrom = bits[0];

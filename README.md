@@ -724,3 +724,14 @@ We can run an additional top level update to calculate and retain the max value 
 
 Logging is handled by logback and configured in the logback xml either in the JAR file or supplied at runtime. By default logging data is verbose and goes to MongoSyphon.log in the directory you are running MongoSyphon.
 
+### Oracle JDBC driver
+
+The Oracle JDBC driver can't be publicly shared, it is in the pom.xml as a dependency. You will need to download ojdbc6.jar and manually install
+it into your local Maven repository by running the following command (assumes you are in the same directory as the ojdbc6.jar file): 
+
+
+```
+mvn install:install-file -DgroupId=com.oracle -DartifactId=ojdbc6 -Dversion=11.2.0.4 -Dpackaging=jar -Dfile=ojdbc6.jar
+```
+
+

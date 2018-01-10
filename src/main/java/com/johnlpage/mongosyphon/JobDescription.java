@@ -30,6 +30,8 @@ public class JobDescription {
 		
 		// Handle \ followed by newline as line continuation
 		config = config.replaceAll("\\\\\r?\n", "");
+		//config = config.replaceAll("\\s+\\/\\/.*$", "");
+		//config = config.replaceAll("^\\/\\/.*$", "");
 		
 		// Better errors from this parser
 		try {
