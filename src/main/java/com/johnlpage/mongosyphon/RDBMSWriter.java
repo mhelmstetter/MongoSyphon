@@ -123,6 +123,8 @@ public class RDBMSWriter implements IDataTarget {
             stmt.setString(statementIndex, oid.toHexString());
         } else if (value.getClass() == Integer.class) {
             stmt.setInt(statementIndex, (Integer)value);
+        } else if (value.getClass() == Double.class) {
+            stmt.setDouble(statementIndex, (Double)value);
         } else if (value.getClass() == Boolean.class) {
             stmt.setBoolean(statementIndex, (Boolean)value);
         } else {
