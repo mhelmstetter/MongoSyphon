@@ -262,7 +262,7 @@ public class DocumentGenerator {
 
 	// Return the next document of NULL if we have no more
 	public Document getNext() {
-	    logger.info("getNext()");
+	    //logger.info("getNext()");
 		Document rval = null;
 		Document row = new Document();
 

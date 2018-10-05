@@ -238,7 +238,7 @@ public class MongoConnection implements IDataSource {
 			}
 		}
 		incache = false;
-		logger.info("executing " + stmttext);
+		//logger.info("executing " + stmttext);
 
 		String databaseName = mongoQLDoc.getString("database");
 		String collectionName = mongoQLDoc.getString("collection");

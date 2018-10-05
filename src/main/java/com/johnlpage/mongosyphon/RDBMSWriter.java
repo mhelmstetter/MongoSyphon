@@ -85,13 +85,15 @@ public class RDBMSWriter implements IDataTarget {
     public void Create(Document doc) {
         try {
             
-            logger.info("Create");
+            //logger.info("Create");
             int count = 1;
             for (Map.Entry<String, Object> entry : doc.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
-                populateStatement(insertStatement, key, value, count);
-                count++;
+                boolean set = populateStatement(insertStatement, key, value, count);
+                if (set) {
+                    count++;
+                }
             }
             insertStatement.executeUpdate();
             
@@ -113,23 +115,25 @@ public class RDBMSWriter implements IDataTarget {
             stmt.setString(statementIndex, oid.toHexString());
         } else if (value.getClass() == Integer.class) {
             stmt.setInt(statementIndex, (Integer)value);
+        } else if (value.getClass() == Boolean.class) {
+            stmt.setBoolean(statementIndex, (Boolean)value);
         } else {
             set = false;
         }
         return set;
     }
     
-    private void populateStatement(PreparedStatement stmt, String key, Object value, int statementIndex) throws SQLException {
+    private boolean populateStatement(PreparedStatement stmt, String key, Object value, int statementIndex) throws SQLException {
         
         // TODO use a stack? to handle deeper nesting
         if (stmt == insertStatement) {
             if (key.equals("_id")) {
-                System.out.println(value);
                 parentId = value;
             }
         }
-        
+        //System.out.println(statementIndex + " " + value);
         boolean set = setScalarValueOnStatement(stmt, statementIndex, value);
+        
         if (! set) {
             if (value.getClass() == ArrayList.class) {
                 int childIdx = 1;
@@ -145,17 +149,16 @@ public class RDBMSWriter implements IDataTarget {
                     } else {
                         logger.warn("TODO nested Document!");
                     }
-                    
-                    System.out.println("** " + listElement);
                     childIdx++;
                 }
+                // skip set for arrays, since they are populated into a child table
             } else {
                 logger.error("No type mapping for " + value.getClass().getName());
             }
         } else {
             // statement is executed by the caller
         }
-        
+        return set;
           
     }
 
