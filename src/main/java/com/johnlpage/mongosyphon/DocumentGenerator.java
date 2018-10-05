@@ -3,6 +3,7 @@ package com.johnlpage.mongosyphon;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,9 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DocumentGenerator {
-	private IDataSource connection = null;
+	private IDataSource sourceConnection = null;
 	private JobDescription jobdesc;
-	Logger logger;
+	private static Logger logger = LoggerFactory.getLogger(DocumentGenerator.class);
 	String sectionName;
 	Document section = null;
 	Document template = null;
@@ -24,7 +25,7 @@ public class DocumentGenerator {
 	List<?> documentTransformersConfig = null;
 	List<IDocumentTransformer> documentTransformers = new ArrayList<IDocumentTransformer>();
 	String targetMode = null;
-	MongoBulkWriter mongoTarget = null;
+	IDataTarget dataTarget = null;
 	Boolean hasRows = false;
 	PrintStream outputStream = null; 
 	
@@ -33,7 +34,7 @@ public class DocumentGenerator {
 
 	DocumentGenerator(JobDescription jobdesc, String section, Document params,
 			Document parentSource) {
-		logger = LoggerFactory.getLogger(DocumentGenerator.class);
+		
 		this.jobdesc = jobdesc;
 		this.sectionName = section;
 		this.section = jobdesc.getSection(section);
@@ -105,38 +106,59 @@ public class DocumentGenerator {
 				logger.error("No namespace defined in target section of "
 						+ sectionName);
 			}
-
-			mongoTarget = new MongoBulkWriter(targetURI, namespace);
+			
+			if (targetURI.startsWith("mongodb:")) {
+			    dataTarget = new MongoBulkWriter(targetURI, namespace);
+	        } else if (targetURI.startsWith("jdbc:")) {
+	            try {
+	                Document insert = (Document)section.get("insert");
+                    dataTarget = new RDBMSWriter(targetURI,target.getString("user"),
+                            target.getString("password"), insert);
+                } catch (SQLException e) {
+                    logger.error("Invalid sql: " + e.getMessage());
+                    System.exit(1);
+                }
+	        } else {
+	            logger.error(
+	                    "Don't know how to handle connection uri " + targetURI);
+	            System.exit(1);
+	        }
+			
 		}
+	}
+	
+	private IDataSource getConnection(Document config) {
+	    IDataSource connection = null;
+	    String connStr = config.getString("uri");
+        if (connStr == null) {
+            logger.error("No uri deinfed in source for " + sectionName);
+            System.exit(1);
+        }
+
+        logger.info("connecting to " + connStr);
+        if (connStr.startsWith("mongodb:")) {
+            connection = new MongoConnection(connStr,
+                    section.containsKey("cached"));
+            connection.Connect(null, null); // In the URI
+        } else if (connStr.startsWith("jdbc:")) {
+            connection = new RDBMSConnection(connStr,
+                    section.containsKey("cached"));
+
+            connection.Connect(config.getString("user"),
+                    config.getString("password"));
+
+        } else {
+            logger.error(
+                    "Don't know how to handle connection uri " + connStr);
+            System.exit(1);
+        }
+        return connection;
 	}
 
 	private void connectToSource(Document source) {
 		// Do I have a connection - if not get one
-		if (connection == null) {
-
-			String connStr = source.getString("uri");
-			if (connStr == null) {
-				logger.error("No uri deinfed in source for " + sectionName);
-				System.exit(1);
-			}
-
-			logger.info("connecting to " + connStr);
-			if (connStr.startsWith("mongodb:")) {
-				connection = new MongoConnection(connStr,
-						section.containsKey("cached"));
-				connection.Connect(null, null); // In the URI
-			} else if (connStr.startsWith("jdbc:")) {
-				connection = new RDBMSConnection(connStr,
-						section.containsKey("cached"));
-
-				connection.Connect(source.getString("user"),
-						source.getString("password"));
-
-			} else {
-				logger.error(
-						"Don't know how to handle connection uri " + connStr);
-				System.exit(1);
-			}
+		if (sourceConnection == null) {
+		    sourceConnection = getConnection(source);
 		}
 	}
 
@@ -146,7 +168,7 @@ public class DocumentGenerator {
 
 	public void close() {
 		if (section.containsKey("mergeon") == false) {
-			connection.close();
+			sourceConnection.close();
 		}
 		
 		if (outputStream != null ) { outputStream.close();}
@@ -196,14 +218,14 @@ public class DocumentGenerator {
 					outputStream.println(doc.toJson());
 				}
 			} else {
-				if (targetMode.equalsIgnoreCase("insert")) {
-					mongoTarget.Create(doc);
-				} else if (targetMode.equalsIgnoreCase("update")) {
-					mongoTarget.Update(doc, false);
-				} else if (targetMode.equalsIgnoreCase("upsert")) {
-					mongoTarget.Update(doc, true);
-				} else if (targetMode.equalsIgnoreCase("save")) {
-                    mongoTarget.Save(doc);
+			    if (targetMode.equalsIgnoreCase("insert")) {
+                    dataTarget.Create(doc);
+                } else if (targetMode.equalsIgnoreCase("update")) {
+                    dataTarget.Update(doc, false);
+                } else if (targetMode.equalsIgnoreCase("upsert")) {
+                    dataTarget.Update(doc, true);
+                } else if (targetMode.equalsIgnoreCase("save")) {
+                    dataTarget.Save(doc);
                 } else {
 					logger.error("Unknown mode " + targetMode);
 					logger.error(
@@ -233,31 +255,32 @@ public class DocumentGenerator {
 					currcount, mstime / 1000L,
 					(1000L * currcount) / (mstime + 1));
 		}
-		if (mongoTarget != null) {
-			mongoTarget.close();
+		if (dataTarget != null) {
+			dataTarget.close();
 		}
 	}
 
 	// Return the next document of NULL if we have no more
 	public Document getNext() {
+	    logger.info("getNext()");
 		Document rval = null;
 		Document row = new Document();
 
 		@SuppressWarnings("unchecked")
 		ArrayList<String> paramArray = section.get("params", ArrayList.class);
 
-		if (connection.hasResults() == false) {
+		if (sourceConnection.hasResults() == false) {
 
-			if (connection.getType() == "SQL") {
+			if (sourceConnection.getType() == "SQL") {
 
-				connection.RunQuery(
+				sourceConnection.RunQuery(
 						section.get("query", Document.class).getString("sql"),
 						paramArray, params);
-			} else if (connection.getType() == "MONGO") {
+			} else if (sourceConnection.getType() == "MONGO") {
 
 				Object q = section.get("query");
 				if (q instanceof Document) {
-					connection.RunQuery(
+					sourceConnection.RunQuery(
 							((Document) section.get("query")).toJson(),
 							paramArray, params);
 				} else {
@@ -268,7 +291,7 @@ public class DocumentGenerator {
 		}
 
 		try {
-			row = connection.GetNextRow();
+			row = sourceConnection.GetNextRow();
 
 			// If it's null, and we havent fetched ANY rows,
 			// and we have a default defined return that
@@ -323,7 +346,7 @@ public class DocumentGenerator {
 				// Loop again whilst we haven't found one
 				if (compval < 0) {
 					try {
-						row = connection.GetNextRow();
+						row = sourceConnection.GetNextRow();
 					} catch (Exception e) {
 						logger.error(e.getMessage());
 						System.exit(1);
@@ -331,7 +354,7 @@ public class DocumentGenerator {
 					found = false;
 				} else if (compval > 0) {
 					// Put it back
-					connection.PushBackRow(row);
+					sourceConnection.PushBackRow(row);
 					// Tell parent we ran out of options
 					found = false;
 					return null;

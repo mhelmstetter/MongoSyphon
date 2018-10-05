@@ -23,7 +23,7 @@ import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
 
 
-public class MongoBulkWriter {
+public class MongoBulkWriter implements IDataTarget {
 	JobDescription target;
 	static final int BATCHSIZE=100;
 	Logger logger;	
