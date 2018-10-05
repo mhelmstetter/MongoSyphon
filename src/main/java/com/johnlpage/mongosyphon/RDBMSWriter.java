@@ -150,7 +150,12 @@ public class RDBMSWriter implements IDataTarget {
                 ArrayList list = (ArrayList)value;
                 for (Object listElement : list) {
                     if (listElement.getClass() != Document.class) {
-                        StatementWrapper wrapper = childStatementsMap.get(key); 
+                        StatementWrapper wrapper = childStatementsMap.get(key);
+                        if (wrapper == null) {
+                            logger.error("No template found for field key: " + key);
+                            throw new RuntimeException("No template found for field key: " + key);
+                        }
+                        
                         PreparedStatement childStatement = wrapper.statement;
                         setScalarValueOnStatement(childStatement, 1, parentId);
                         childStatement.setInt(2, childIdx);
