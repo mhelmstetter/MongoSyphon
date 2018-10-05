@@ -19,8 +19,6 @@ import org.slf4j.LoggerFactory;
 public class RDBMSWriter implements IDataTarget {
     
     private String connectionString = null;
-    private String user;
-    private String pass;
     private Connection connection = null; 
     private Logger logger;
     ResultSet results = null;
@@ -31,10 +29,13 @@ public class RDBMSWriter implements IDataTarget {
     private Object parentId = null;
 
     private PreparedStatement insertStatement;
-    private Map<String, PreparedStatement> childStatementsMap = new HashMap<String, PreparedStatement>();
+    private Map<String, StatementWrapper> childStatementsMap = new HashMap<String, StatementWrapper>();
     
     String stmttext=null;
     Document prevRow=null;
+    
+    private int opsCount = 0;
+    
     
     public RDBMSWriter(String connectionString, String user, String pass, Document insertConfig) throws SQLException {
         logger = LoggerFactory.getLogger(RDBMSWriter.class);
@@ -49,7 +50,7 @@ public class RDBMSWriter implements IDataTarget {
             }
             String childSql = (String)entry.getValue();
             PreparedStatement childStatement = connection.prepareStatement(childSql);
-            childStatementsMap.put(key, childStatement);
+            childStatementsMap.put(key, new StatementWrapper(childStatement));
         }
     }
     
@@ -63,8 +64,6 @@ public class RDBMSWriter implements IDataTarget {
             e.printStackTrace();
             System.exit(1);
         }
-        this.user = user;
-        this.pass = pass;
     }
 
     public Document FindOne(Document query, Document fields, Document order) {
@@ -95,7 +94,11 @@ public class RDBMSWriter implements IDataTarget {
                     count++;
                 }
             }
-            insertStatement.executeUpdate();
+            //insertStatement.executeUpdate();
+            insertStatement.addBatch();
+            
+            FlushOpsIfFull();
+            
             
         } catch (SQLException sqle) {
             throw new RuntimeException(sqle);
@@ -105,7 +108,12 @@ public class RDBMSWriter implements IDataTarget {
     private static boolean setScalarValueOnStatement(PreparedStatement stmt, int statementIndex, Object value) throws SQLException {
         boolean set = true;
         if (value.getClass() == String.class) {
-            stmt.setString(statementIndex, (String)value);
+            String strVal =  (String)value;
+            // TODO parameterize this hack
+            if (strVal.length() > 1024) {
+                strVal = strVal.substring(0, 1023);
+            }
+            stmt.setString(statementIndex, strVal);
         } else if (value.getClass() == Date.class) {
             Date d = (Date)value;
             //TODO check that this does correct TZ conversion?
@@ -140,11 +148,17 @@ public class RDBMSWriter implements IDataTarget {
                 ArrayList list = (ArrayList)value;
                 for (Object listElement : list) {
                     if (listElement.getClass() != Document.class) {
-                        PreparedStatement childStatement = childStatementsMap.get(key);
+                        StatementWrapper wrapper = childStatementsMap.get(key); 
+                        PreparedStatement childStatement = wrapper.statement;
                         setScalarValueOnStatement(childStatement, 1, parentId);
                         childStatement.setInt(2, childIdx);
                         setScalarValueOnStatement(childStatement, 3, listElement);
-                        childStatement.executeUpdate();
+                        //childStatement.executeUpdate();
+                        childStatement.addBatch();
+                        wrapper.statementCount++;
+                        if (wrapper.statementCount % 1000 == 0) {
+                            childStatement.executeBatch();
+                        }
                         
                     } else {
                         logger.warn("TODO nested Document!");
@@ -163,8 +177,38 @@ public class RDBMSWriter implements IDataTarget {
     }
 
     public void close() {
-        // TODO Auto-generated method stub
+        try {
+            insertStatement.executeBatch();
+            for (StatementWrapper wrapper : childStatementsMap.values()) {
+                wrapper.statement.executeBatch();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private void FlushOpsIfFull() {
+        opsCount++;
         
+        if (opsCount % 1000 == 0) {
+            try {
+                insertStatement.executeBatch();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        
+    }
+    
+    class StatementWrapper {
+        
+        public StatementWrapper(PreparedStatement statement) {
+            this.statement = statement;
+            this.statementCount = 0;
+        }
+        
+        public PreparedStatement statement;
+        public int statementCount;
     }
 
 }
