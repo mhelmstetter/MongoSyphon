@@ -27,7 +27,7 @@
                   <mainClass>com.johnlpage.mongosyphon.MongoSyphon</mainClass>
                 </transformer>
               </transformers>
-              <createDependencyReducedPom>false</createDependencyReducedPom>.
+              <createDependencyReducedPom>false</createDependencyReducedPom>
             </configuration>
           </execution>
         </executions>
